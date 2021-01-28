@@ -1,7 +1,7 @@
-
 // Global variables
 const SHOW = 'visible';
 const HIDE = 'hidden';
+const NONE = 'none';
 let allFormErrors = [];
 
 // data objects used to bind the payment types to the accompanying field[s]
@@ -21,11 +21,18 @@ const paymentOptions =
 
 // helper objects that support field validation. Identifies the a validation function that is used to individually validate the field.
 // The other properties support the validation
+
 const fieldValidations = [
   {
     fieldId: 'name',
-    regex: /^\w+$/,
+    regex: /^\w{1,}$/,
     errorMsg: 'Name field can not be blank',
+    validationfunction: basicRegExpValidates
+  },
+  {
+    fieldId: 'email',
+    regex: /\w{4,}/,
+    errorMsg: 'Email must be at least 4 characters',
     validationfunction: basicRegExpValidates
   },
   {
@@ -35,14 +42,22 @@ const fieldValidations = [
     validationfunction: basicRegExpValidates
   },
   {
-    fieldId: 'payment',
-    fieldIdValue: 'credit-card',
-    field_regex: [
-      { 'cc-num': /^\d{13,16}$/, errorMsg: 'Please ensure the credit card is 13-16 digits' },
-      { zip: /^\d{5,5}$/, errorMsg: 'Please ensure the zip is 5 digit' },
-      { cvv: /^\d{3,3}$/, errorMsg: 'Please ensure the cvv code is 3 digits' }],
-    errorMsg: 'Please ensure the credit card is 13-16 digits, the zip is 5 digits and the cvv code is 3 digits',
-    validationfunction: creditCardValidates
+    fieldId: 'cc-num',
+    regex: /^\d{13,16}$/,
+    errorMsg: 'Please ensure the credit card is 13-16 digits',
+    validationfunction: basicRegExpValidates
+  },
+  {
+    fieldId: 'zip',
+    regex: /^\d{5,5}$/,
+    errorMsg: 'Please ensure the zip is 5 digit',
+    validationfunction: basicRegExpValidates
+  },
+  {
+    fieldId: 'cvv',
+    regex: /^\d{3,3}$/,
+    errorMsg: 'Please ensure the cvv code is 3 digits',
+    validationfunction: basicRegExpValidates
   },
   {
     fieldId: 'activities-box',
@@ -84,33 +99,14 @@ function paymentOptionSet (paymentOption) {
   for (let i = 0; i < paymentOptions.length; i++) {
     if (paymentOption === paymentOptions[i].type) {
       for (let j = 0; j < paymentOptions[i].fields.length; j++) {
-        selectFieldByName(`.${paymentOptions[i].fields[j]}`).style.visibility = SHOW;
+        selectFieldByName(`.${paymentOptions[i].fields[j]}`).style.display = '';
       }
     } else {
       for (let j = 0; j < paymentOptions[i].fields.length; j++) {
-        selectFieldByName(`.${paymentOptions[i].fields[j]}`).style.visibility = HIDE;
+        selectFieldByName(`.${paymentOptions[i].fields[j]}`).style.display = NONE;
       }
     }
   }
-}
-
-// function used to validate credit card fields
-function creditCardValidates (fieldValidationObj) {
-  const errorsArray = [];
-  if (selectFieldByName(fieldValidationObj.fieldId).value === fieldValidationObj.fieldIdValue) {
-    for (let i = 0; i < fieldValidationObj.field_regex.length; i++) {
-      const fieldToValidate = Object.keys(fieldValidationObj.field_regex[i])[0];
-      const regex = fieldValidationObj.field_regex[i][fieldToValidate];
-      const ccErrorMsgField = Object.keys(fieldValidationObj.field_regex[i])[1];
-      const ccErrorMessage = fieldValidationObj.field_regex[i][ccErrorMsgField];
-      const fieldPassedValidation = regex.test(document.getElementById(fieldToValidate).value);
-
-      if (!fieldPassedValidation) {
-        errorsArray.push({ fieldId: fieldToValidate, errorMsg: ccErrorMessage });
-      }
-    }
-  }
-  return errorsArray;
 }
 
 // validation function used for basic regx validations
@@ -123,6 +119,8 @@ function basicRegExpValidates (fieldValidationObj) {
   const passedValidation = regex.test(fieldElem.value);
   if (!passedValidation) {
     errorsArray.push({ fieldId: fieldId, errorMsg: errMsg });
+  } else {
+    clearFormErrors(fieldId);
   }
   return errorsArray;
 }
@@ -141,6 +139,8 @@ function activitiesValidates (fieldValidationObj) {
   }
   if (!atLeastOneItemChecked) {
     errorsArray.push({ fieldId: fieldId, errorMsg: errorMessage });
+  } else {
+    clearFormErrors(fieldId);
   }
   return errorsArray;
 }
@@ -150,18 +150,23 @@ function handleFormErrors () {
   for (let i = 0; i < allFormErrors.length; i++) {
     selectFieldByName(allFormErrors[i].fieldId).parentElement.classList.add('not-valid');
     selectFieldByName(allFormErrors[i].fieldId).parentElement.classList.remove('valid');
+    if (allFormErrors[i].fieldId === 'email') {
+      const emailMsgArr = [];
+      for (let j = 0; j < allFormErrors.length; j++) {
+        emailMsgArr.push(allFormErrors[j].errorMsg);
+      }
+      selectFieldByName(allFormErrors[i].fieldId).parentElement.lastElementChild.innerHTML = emailMsgArr[0];
+    }
     selectFieldByName(allFormErrors[i].fieldId).parentElement.lastElementChild.style.display = 'inline';
   }
+  allFormErrors = [];
 }
 
 // remove form errors
-function clearFormErrors () {
-  for (let i = 0; i < allFormErrors.length; i++) {
-    selectFieldByName(allFormErrors[i].fieldId).parentElement.classList.remove('not-valid');
-    selectFieldByName(allFormErrors[i].fieldId).parentElement.classList.add('valid');
-    selectFieldByName(allFormErrors[i].fieldId).parentElement.lastElementChild.style.display = 'none';
-  }
-  allFormErrors = [];
+function clearFormErrors (fieldId) {
+  selectFieldByName(fieldId).parentElement.classList.remove('not-valid');
+  selectFieldByName(fieldId).parentElement.classList.add('valid');
+  selectFieldByName(fieldId).parentElement.lastElementChild.style.display = 'none';
 }
 
 // Event Listeners
@@ -180,11 +185,8 @@ selectFieldByName('title').addEventListener('change', e => {
 
 // add event listener for color drop downin
 selectFieldByName('design').addEventListener('change', e => {
-  if (selectFieldByName('design').value !== 'Select Theme') {
-    selectFieldByName('color').disabled = false;
-  }
   const selectedText = selectFieldByName('design').value;
-  for (let i = 0; i < selectFieldByName('color').options.length; i++) {
+  for (let i = 1; i < selectFieldByName('color').options.length; i++) {
     const elemObject = selectFieldByName('color').options[i];
     if ((elemObject.getAttribute('data-theme') != null) && (elemObject.getAttribute('data-theme') !== selectedText)) {
       selectFieldByName('color').options[i].style.display = 'none';
@@ -192,6 +194,7 @@ selectFieldByName('design').addEventListener('change', e => {
       selectFieldByName('color').options[i].style.display = 'inline';
     }
   }
+  selectFieldByName('shirt-colors').style.visibility = SHOW;
 });
 
 // Creates a listner on the activitiy checkbox and alters visibility for on focus /blur
@@ -240,20 +243,40 @@ selectFieldByName('payment').addEventListener('change', event => {
 // add field listener for activities cost calculations
 selectFieldByName('activities').addEventListener('change', event => {
   let totalActivitiesCost = 0;
+  const allInputItems = document.getElementsByTagName('input');
+  const activityElementsArr = [];
   if (event.target.tagName === 'INPUT') {
-    for (let i = 0; i < document.getElementsByTagName('input').length; i++) {
-      const activityPrice = document.getElementsByTagName('input')[i].getAttribute('data-cost');
-      if (activityPrice && document.getElementsByTagName('input')[i].checked) {
+    for (let i = 0; i < allInputItems.length; i++) {
+      const activityPrice = allInputItems[i].getAttribute('data-cost');
+      // add activity items to an array to clear any errors
+      if (activityPrice > 0) {
+        activityElementsArr.push(allInputItems[i]);
+      }
+      if (activityPrice && allInputItems[i].checked) {
         totalActivitiesCost += +activityPrice;
       }
     }
   }
   selectFieldByName('activities-cost').innerHTML = `Total: $${totalActivitiesCost}`;
+  clearExistingActivitiesErrors(activityElementsArr);
 });
+
+// check to see if the activity block is in error state and clear if something is checked
+function clearExistingActivitiesErrors (inputElements) {
+  if (selectFieldByName('activities').classList.contains('not-valid')) {
+    for (let i = 0; i < inputElements.length; i++) {
+      if (inputElements[i].checked) {
+        selectFieldByName('activities').classList.add('valid');
+        selectFieldByName('activities').classList.remove('not-valid');
+        selectFieldByName('activities').lastElementChild.style.display = 'none';
+        break;
+      }
+    }
+  }
+}
 
 // send a function for each validation
 document.forms[0].addEventListener('submit', e => {
-  clearFormErrors();
   for (let i = 0; i < fieldValidations.length; i++) {
     const errorsArray = fieldValidations[i].validationfunction(fieldValidations[i]);
     if (errorsArray.length > 0) {
@@ -264,46 +287,23 @@ document.forms[0].addEventListener('submit', e => {
     e.preventDefault();
     handleFormErrors();
   }
-});
-
-// added on keyup event listners for email form elements
-selectFieldByName('email').addEventListener('keyup', event => {
-  selectFieldByName('email').parentElement.classList.add('valid');
-  selectFieldByName('email').parentElement.classList.remove('not-valid');
-  selectFieldByName('email').parentElement.lastElementChild.style.display = 'none';
-
-  const regex = /^\w{1,}@\w{1,}\.com$/;
-  const elemValue = event.target.value;
-  let errorMsg = '';
-  if (elemValue.length < 5) {
-    errorMsg = 'Email must have at a minimum 4 characters';
-  } else if (!regex.test(elemValue)) {
-    errorMsg = 'Email must include a valid email address';
-  }
-
-  if (errorMsg.length > 0) {
-    event.preventDefault();
-    selectFieldByName('email').parentElement.classList.add('not-valid');
-    selectFieldByName('email').parentElement.classList.remove('valid');
-    selectFieldByName('email').parentElement.lastElementChild.innerHTML = errorMsg;
-    selectFieldByName('email').parentElement.lastElementChild.style.display = 'inline';
-    allFormErrors.length = 0;
-  }
+  allFormErrors = [];
 });
 
 // added on keyup evet listners for forms elements
 document.forms[0].addEventListener('keyup', event => {
-  clearFormErrors();
+  //  clearFormErrors();
   for (let i = 0; i < fieldValidations.length; i++) {
-    if ((event.target.id === fieldValidations[i].fieldId) && (fieldValidations[i].fieldId !== 'email')) {
+    if ((event.target.id === fieldValidations[i].fieldId)) {
       const errorsArray = fieldValidations[i].validationfunction(fieldValidations[i]);
       if (errorsArray.length > 0) {
         allFormErrors = [...allFormErrors, ...errorsArray];
       }
       event.preventDefault();
-      handleFormErrors();
     }
   }
+  handleFormErrors();
+  allFormErrors = [];
 });
 
 // Execution
@@ -312,7 +312,7 @@ document.forms[0].addEventListener('keyup', event => {
 // create focus on the first form elements
 selectFieldByName('name').focus();
 toggleFieldVisibility('other-job-role', HIDE);
-selectFieldByName('color').disabled = true;
+selectFieldByName('shirt-colors').style.visibility = HIDE;
 selectInputFocusByNameAndInex('payment', 1);
 paymentOptionSet('credit-card');
 addCheckboxEventListners();
