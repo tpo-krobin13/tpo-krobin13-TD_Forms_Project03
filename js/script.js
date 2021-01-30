@@ -186,8 +186,8 @@ selectFieldByName('title').addEventListener('change', e => {
 // add event listener for color drop downin
 selectFieldByName('design').addEventListener('change', e => {
   const selectedText = selectFieldByName('design').value;
-  let fieldTextObj = document.querySelector('.shirt-colors label');
-  fieldTextObj.innerText = 'Color: ' + selectedText.replace('Theme - ','').toUpperCase();
+  selectFieldByName('color').options[0].innerText = 'Select a color';
+  selectFieldByName('color').options[0].selected = true;
   for (let i = 1; i < selectFieldByName('color').options.length; i++) {
     const elemObject = selectFieldByName('color').options[i];
     if ((elemObject.getAttribute('data-theme') != null) && (elemObject.getAttribute('data-theme') !== selectedText)) {
